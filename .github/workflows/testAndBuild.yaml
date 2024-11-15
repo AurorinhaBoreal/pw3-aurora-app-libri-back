@@ -7,10 +7,10 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
-      MYSQL_ROOT_PASSWORD: "libraryPassword"
-      MYSQL_DATABASE: "library_db"
-      MYSQL_USER: "libraryUser"
-      MYSQL_PASSWORD: "libraryPassword"
+      MYSQL_ROOT_PASSWORD: libraryPassword
+      MYSQL_DATABASE: library_db
+      MYSQL_USER: libraryUser
+      MYSQL_PASSWORD: libraryPassword
       DB_HOST: 'localhost'
 
     steps:
@@ -30,21 +30,22 @@ jobs:
     - name: Install dependencies
       run: npm install
 
-    - name: Start MySQL and wait for health check
+    - name: Build and start MySQL
       run: |
+        docker-compose build
         docker-compose up -d
         for i in {1..60}; do
-          if [ "$(docker inspect -f '{{.State.Health.Status}}' library-database)" == "healthy" ]; then
-            echo "MySQL container is healthy!"
+          if docker-compose exec db mysqladmin ping -uroot -p$MYSQL_ROOT_PASSWORD --silent; then
+            echo "MySQL is ready!"
             break
           fi
-          echo "Waiting for MySQL container to be healthy..."
+          echo "Waiting for MySQL to be ready..."
           sleep 5
         done
 
     - name: Initialize database
       run: |
-        docker-compose exec -T db mysql -uroot -p${ROOT_PASSWORD} -e "CREATE DATABASE IF NOT EXISTS ${DB_NAME};"
+        docker-compose exec -T db mysql -uroot -p$MYSQL_ROOT_PASSWORD -e "CREATE DATABASE IF NOT EXISTS $MYSQL_DATABASE;"
 
     - name: Run ESLint
       run: npm run lint
